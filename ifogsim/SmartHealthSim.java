@@ -28,7 +28,7 @@ public class SmartHealthSim {
         Log.printLine("Starting Smart Health Fog Simulation...");
 
         try {
-            Logger.ENABLED = true; // to Enable logging
+            Logger.ENABLED = true; // Enable logging
 
             int numUser = 1;
             Calendar calendar = Calendar.getInstance();
@@ -56,8 +56,8 @@ public class SmartHealthSim {
                 throw new RuntimeException("Mobile device not found!");
             }
 
-            // Sensor & Actuator Setup
-            Sensor ppgSensor = new Sensor("PPG_Sensor", "PPG_STREAM", broker.getId(), appId, new DeterministicDistribution(5));
+            // === Sensor & Actuator Setup ===
+            Sensor ppgSensor = new Sensor("PPG_Sensor", "PPG_STREAM", broker.getId(), appId, new DeterministicDistribution(1));
             Actuator displayActuator = new Actuator("actuator", broker.getId(), appId, "DISPLAY_RESULT");
 
             ppgSensor.setGatewayDeviceId(mobileDevice.getId());
@@ -71,25 +71,28 @@ public class SmartHealthSim {
             sensors.add(ppgSensor);
             actuators.add(displayActuator);
 
-            // Module Mapping
+            // === Module Mapping ===
             ModuleMapping moduleMapping = ModuleMapping.createModuleMapping();
             moduleMapping.addModuleToDevice("SensorReader", "mobile");
             moduleMapping.addModuleToDevice("Predictor", "edge");
             moduleMapping.addModuleToDevice("DataStorage", "cloud");
+            moduleMapping.addModuleToDevice("DisplayModule", "cloud");
+            moduleMapping.addModuleToDevice("DisplayActuatorModule", "mobile");
 
-            // Controller and Application Submission
+
+            // === Controller and Application Submission ===
             Controller controller = new Controller("master-controller", fogDevices, sensors, actuators);
             
-            System.out.println("Module Mapping ");
+            System.out.println("--- Module Mapping ---");
             for (Map.Entry<String, List<String>> entry : moduleMapping.getModuleMapping().entrySet()) {
                 System.out.println("Module '" + entry.getKey() + "' mapped to device(s): " + entry.getValue());
             }
-            System.out.println("---------\n");
+            System.out.println("----------------------\n");
 
             
             controller.submitApplication(application, 0, new ModulePlacementMapping(fogDevices, application, moduleMapping));
 
-            // Debug Info
+            // === Debug Info ===
             System.out.println("\n--- Debugging Sensor-AppEdge Link ---");
             System.out.println("Sensor Name: " + ppgSensor.getName());
             System.out.println("Sensor Tuple Type: " + ppgSensor.getTupleType());
@@ -109,7 +112,7 @@ public class SmartHealthSim {
             if (!foundMatchingEdge) {
                 System.out.println("!!! No matching AppEdge found for PPG_Sensor.");
             }
-            System.out.println("End Debugging \n");
+            System.out.println("--- End Debugging --- \n");
 
             for (AppEdge edge : application.getEdges()) {
                 System.out.println("Edge from " + edge.getSource() + " to " + edge.getDestination() + " type: " + edge.getTupleType());
@@ -117,6 +120,7 @@ public class SmartHealthSim {
 
             CloudSim.startSimulation();
             CloudSim.stopSimulation();
+            System.out.println("Checking if DisplayActuatorModule received any tuple...");
 
             Log.printLine("Smart Health Fog Simulation finished!");
 
@@ -187,10 +191,11 @@ public class SmartHealthSim {
     private static Application createApplication(String appId, int userId) {
         Application application = Application.createApplication(appId, userId);
 
-        application.addAppModule("SensorReader", 10);
-        application.addAppModule("Predictor", 50);
-        application.addAppModule("DataStorage", 10);
-        application.addAppModule("DisplayModule", 5);
+        application.addAppModule("SensorReader", 100);
+        application.addAppModule("Predictor", 100);
+        application.addAppModule("DataStorage", 100);
+        application.addAppModule("DisplayModule", 100);
+        application.addAppModule("DisplayActuatorModule", 100);
 
 
         application.addAppEdge("PPG_Sensor", "SensorReader", 1000, 200, 5,
@@ -203,17 +208,21 @@ public class SmartHealthSim {
                 "PREDICTION_RESULT", Tuple.UP, AppEdge.MODULE);
 
         application.addAppEdge("DataStorage", "DisplayModule", 500, 50, "DISPLAY_RESULT", Tuple.UP, AppEdge.MODULE);
-        application.addAppEdge("DisplayModule", "actuator", 100, 20, "DISPLAY_RESULT_FINAL", Tuple.DOWN, AppEdge.ACTUATOR);
+        application.addAppEdge("DisplayModule", "DisplayActuatorModule", 100, 20, "DISPLAY_RESULT_FINAL", Tuple.UP, AppEdge.MODULE);
+        application.addAppEdge("DisplayActuatorModule", "actuator", 10, 5, "ACTUATOR_TRIGGER", Tuple.DOWN, AppEdge.ACTUATOR);
 
+        System.out.println("Added edge and mapping: DISPLAY_RESULT → DISPLAY_RESULT_FINAL");
 
         application.addTupleMapping("SensorReader", "PPG_STREAM", "PREDICTION_TASK", new FractionalSelectivity(1.0));
         application.addTupleMapping("Predictor", "PREDICTION_TASK", "PREDICTION_RESULT", new FractionalSelectivity(1.0));
         application.addTupleMapping("DataStorage", "PREDICTION_RESULT", "DISPLAY_RESULT", new FractionalSelectivity(1.0));
         application.addTupleMapping("DisplayModule", "DISPLAY_RESULT", "DISPLAY_RESULT_FINAL", new FractionalSelectivity(1.0));
-
-
+        
+        System.out.println("Mapping: DISPLAY_RESULT_FINAL --> ACTUATOR_TRIGGER");
+        application.addTupleMapping("DisplayActuatorModule", "DISPLAY_RESULT_FINAL", "ACTUATOR_TRIGGER", new FractionalSelectivity(1.0));
+        
         application.setLoops(Collections.singletonList(new AppLoop(Arrays.asList(
-                "SensorReader", "Predictor", "DataStorage", "DisplayModule", "actuator"
+        		"PPG_Sensor","SensorReader", "Predictor", "DataStorage","DisplayModule"
         ))));
 
         return application;
