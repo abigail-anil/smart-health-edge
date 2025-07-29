@@ -18,14 +18,14 @@ import org.fog.scheduler.StreamOperatorScheduler;
 import org.fog.utils.*;
 import org.fog.utils.distribution.DeterministicDistribution;
 
-public class SmartHealthSim {
+public class SmartHealthSim_CloudPredictor {
 
     static List<FogDevice> fogDevices = new ArrayList<>();
     static List<Sensor> sensors = new ArrayList<>();
     static List<Actuator> actuators = new ArrayList<>();
 
     public static void main(String[] args) {
-        Log.printLine("Starting Smart Health Fog Simulation...");
+        Log.printLine("Starting Smart Health Fog Simulation (Cloud-based Predictor)...");
 
         try {
             Logger.ENABLED = true;
@@ -77,7 +77,7 @@ public class SmartHealthSim {
 
             ModuleMapping moduleMapping = ModuleMapping.createModuleMapping();
             moduleMapping.addModuleToDevice("SensorReader", "mobile");
-            moduleMapping.addModuleToDevice("Predictor", "edge");
+            moduleMapping.addModuleToDevice("Predictor", "cloud");
             moduleMapping.addModuleToDevice("DataStorage", "cloud");
             moduleMapping.addModuleToDevice("DisplayModule", "cloud");
             moduleMapping.addModuleToDevice("DisplayActuatorModule", "mobile");
