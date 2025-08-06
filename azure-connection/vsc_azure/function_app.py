@@ -38,7 +38,7 @@ def ProcessIoTMessages(event: func.EventHubEvent): #Defines the function that wi
         timestamp_sent = sensor_data.get("timestamp_sent")
 
         # Call the Flask ML API and track latency
-        edge_node_url = "https://2b57f45207f9.ngrok-free.app/predict" # Defines the URL of the Flask ML API
+        edge_node_url = "https://96331ff736c4.ngrok-free.app/predict" # Defines the URL of the Flask ML API
         api_start = time.time()
         response = requests.post(edge_node_url, json=sensor_data) # Sends a POST request with the sensor data to the API
         api_end = time.time()
